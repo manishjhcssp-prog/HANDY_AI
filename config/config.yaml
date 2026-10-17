@@ -89,7 +89,10 @@ router_settings:
 # Audio & Voice Pipeline (Tier 1)
 audio:
   tts:
-    voice: "en-GB-RyanNeural"        # Sophisticated British Butler voice
+    engine: "kokoro"                 # "kokoro" (neural, local) or "sapi" (native Windows)
+    voice: "bm_george"               # British Butler voice (bm_george, bm_fable, bm_lewis)
+    lang_code: "b"                   # "b" for British English, "a" for American English
+    speed: 1.05
     rate: "+0%"
     pitch: "+0Hz"
     volume: "+0%"

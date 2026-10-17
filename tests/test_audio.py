@@ -50,3 +50,11 @@ async def test_tts_stream_and_speak():
     full = await tts.stream_and_speak(mock_stream(), on_token=lambda t: tokens_received.append(t))
     assert full == "Greetings, sir. System online."
     assert tokens_received == ["Greetings, ", "sir. ", "System online."]
+
+
+def test_kokoro_tts_initialization():
+    tts = TTSEngine(voice="bm_george", speed=1.05, lang_code="b")
+    assert tts.voice == "bm_george"
+    assert tts.speed == 1.05
+    assert tts.lang_code == "b"
+    assert tts._kokoro_pipeline is None  # Lazy loading verified

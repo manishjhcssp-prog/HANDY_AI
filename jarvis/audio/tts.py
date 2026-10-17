@@ -1,6 +1,6 @@
 """
 JARVIS AI - Text-to-Speech (TTS) Engine (Tier 1)
-Supports streaming sentence-level neural speech synthesis via Edge-TTS
+Supports local, studio-quality neural speech synthesis via Kokoro TTS (82M)
 with automatic zero-latency fallback to Windows native SAPI5.
 """
 
@@ -9,7 +9,14 @@ import os
 import re
 import asyncio
 import logging
-from typing import Optional, AsyncIterator
+import warnings
+from typing import Optional, AsyncIterator, Callable
+
+# Disable Hugging Face symlink warnings on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore")
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
 logger = logging.getLogger("JARVIS.Audio.TTS")
 
@@ -33,111 +40,105 @@ def _speak_sapi_thread(text: str, rate: int = 1):
 
 class TTSEngine:
     """
-    Neural and native TTS engine with sentence streaming and graceful fallbacks.
+    Kokoro neural and native SAPI TTS engine with sentence streaming and graceful fallbacks.
+    Default voice: bm_george (British Butler persona).
     """
 
     def __init__(
         self,
-        voice: str = "en-GB-RyanNeural",
-        rate: str = "+0%",
-        pitch: str = "+0Hz",
+        voice: str = "bm_george",
+        speed: float = 1.05,
+        lang_code: str = "b",
         prefer_native: bool = False,
     ):
         self.voice = voice
-        self.rate = rate
-        self.pitch = pitch
+        self.speed = speed
+        self.lang_code = lang_code
         self.prefer_native = prefer_native
+        self._kokoro_pipeline = None
         self._sapi_voice = None
         self._init_sapi()
 
     def _init_sapi(self):
-        """Initializes native Windows SAPI.SpVoice COM interface."""
+        """Initializes native Windows SAPI.SpVoice COM interface as fallback."""
         if sys.platform == "win32":
             try:
                 import win32com.client
                 self._sapi_voice = win32com.client.Dispatch("SAPI.SpVoice")
-                # Speed control (-10 to 10)
                 self._sapi_voice.Rate = 1
-                logger.info("Windows SAPI.SpVoice successfully initialized as fallback.")
+                logger.info("Windows SAPI.SpVoice initialized as fallback.")
             except Exception as e:
                 logger.warning(f"Could not initialize Windows SAPI.SpVoice: {e}")
                 self._sapi_voice = None
 
-    def _speak_sapi(self, text: str, async_mode: bool = False):
-        """Speaks text using Windows SAPI voice."""
-        if not self._sapi_voice:
-            return
-        flags = 1 if async_mode else 0
+    def _get_kokoro_pipeline(self):
+        """Lazy-loads the Kokoro neural TTS pipeline on demand."""
+        if self._kokoro_pipeline is None:
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    from kokoro import KPipeline
+                    logger.info("Initializing Kokoro Neural TTS pipeline (82M)...")
+                    self._kokoro_pipeline = KPipeline(lang_code=self.lang_code, repo_id="hexgrad/Kokoro-82M")
+                    logger.info("Kokoro Neural TTS pipeline ready.")
+            except Exception as e:
+                logger.warning(f"Could not initialize Kokoro TTS: {e}")
+                self._kokoro_pipeline = None
+        return self._kokoro_pipeline
+
+    def _speak_kokoro_thread(self, text: str, voice: str, speed: float) -> bool:
+        """Synthesizes and plays audio with Kokoro in worker thread."""
         try:
-            self._sapi_voice.Speak(text, flags)
+            pipeline = self._get_kokoro_pipeline()
+            if not pipeline:
+                return False
+            import sounddevice
+            generator = pipeline(text, voice=voice, speed=speed)
+            for _, _, audio in generator:
+                audio_np = audio.numpy()
+                sounddevice.play(audio_np, 24000)
+                sounddevice.wait()
+            return True
         except Exception as e:
-            logger.error(f"SAPI speech error: {e}")
+            logger.warning(f"Kokoro playback error ({e}), falling back to SAPI.")
+            return False
 
     async def speak_text(self, text: str):
         """
-        Synthesizes and speaks text using Edge-TTS if possible,
-        falling back seamlessly to non-blocking Windows SAPI5.
+        Synthesizes and speaks text using Kokoro Neural TTS,
+        falling back seamlessly to Windows SAPI5 if unavailable.
         """
         clean_text = self._sanitize_text(text)
         if not clean_text:
             return
 
-        if self.prefer_native or not self._is_online_tts_available():
-            await asyncio.to_thread(_speak_sapi_thread, clean_text, 1)
-            return
+        if not self.prefer_native:
+            success = await asyncio.to_thread(self._speak_kokoro_thread, clean_text, self.voice, self.speed)
+            if success:
+                return
 
-        # Attempt Edge-TTS
-        try:
-            import edge_tts
-            import tempfile
-            import pygame
-
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-                tmp_path = tmp.name
-
-            communicate = edge_tts.Communicate(
-                clean_text,
-                self.voice,
-                rate=self.rate,
-                pitch=self.pitch,
-            )
-            await communicate.save(tmp_path)
-
-            # Play using pygame
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
-            pygame.mixer.music.load(tmp_path)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                await asyncio.sleep(0.05)
-            pygame.mixer.music.unload()
-
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-
-        except Exception as e:
-            logger.info(f"Online TTS unavailable ({e}), using Windows SAPI voice.")
-            await asyncio.to_thread(_speak_sapi_thread, clean_text, 1)
+        # SAPI Fallback
+        await asyncio.to_thread(_speak_sapi_thread, clean_text, 1)
 
     def speak_sync(self, text: str):
-        """Synchronous speak wrapper for console/worker threads."""
+        """Synchronous speak wrapper for worker threads or CLI shutdown."""
         clean_text = self._sanitize_text(text)
         if not clean_text:
             return
+        if not self.prefer_native:
+            if self._speak_kokoro_thread(clean_text, self.voice, self.speed):
+                return
         _speak_sapi_thread(clean_text, 1)
 
     async def stream_and_speak(
         self,
         token_stream: AsyncIterator[str],
-        on_token: Optional[any] = None,
+        on_token: Optional[Callable[[str], None]] = None,
     ) -> str:
         """
         Streams tokens chunk-by-chunk with zero text latency, while simultaneously
-        queueing complete sentences for immediate, non-blocking speech synthesis.
+        queueing complete sentences for immediate, non-blocking Kokoro speech synthesis.
         """
-        from typing import Callable
         queue: asyncio.Queue[Optional[str]] = asyncio.Queue()
         full_text = []
 
@@ -212,7 +213,3 @@ class TTSEngine:
         # Clean up any space before punctuation
         t = re.sub(r"\s+([,.:;!?])", r"\1", t)
         return " ".join(t.split())
-
-    def _is_online_tts_available(self) -> bool:
-        # Defaults to False on network restrictions or 403
-        return False

@@ -15,8 +15,10 @@ pytest>=8.2.0
 pytest-asyncio>=0.23.0
 
 # Voice & Audio (Phase 2)
+kokoro>=0.9.4
+sounddevice>=0.4.7
+soundfile>=0.12.1
 edge-tts>=6.1.12
-# sounddevice>=0.4.7
 # faster-whisper>=1.0.2
 
 # OS Automation (Phase 3)
