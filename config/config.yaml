@@ -1,0 +1,104 @@
+# ==============================================================================
+# JARVIS AI - Core Configuration
+# ==============================================================================
+
+system:
+  name: "JARVIS"
+  persona: "A highly capable, witty, respectful British butler AI assistant"
+  free_only_mode: true   # Strict target ₹0 ongoing API cost
+  debug: false
+
+# Provider Failover Priority Order
+provider_priority:
+  - openrouter
+  - groq
+  - gemini
+  - ollama
+  - sarvam
+
+# Provider Specific Configurations
+providers:
+  openrouter:
+    name: "OpenRouter"
+    base_url: "https://openrouter.ai/api/v1"
+    default_model: "openrouter/free"
+    allowed_free_models:
+      - "openrouter/free"
+      - "openai/gpt-oss-20b:free"
+      - "meta-llama/llama-3.3-70b-instruct:free"
+      - "google/gemini-2.0-flash-exp:free"
+      - "qwen/qwen-2.5-coder-32b-instruct:free"
+      - "mistralai/mistral-7b-instruct:free"
+      - "deepseek/deepseek-r1:free"
+    timeout: 25.0
+
+  groq:
+    name: "Groq"
+    base_url: "https://api.groq.com/openai/v1"
+    default_model: "llama-3.3-70b-versatile"
+    allowed_free_models:
+      - "llama-3.3-70b-versatile"
+      - "llama-3.1-8b-instant"
+      - "openai/gpt-oss-120b"
+      - "openai/gpt-oss-20b"
+      - "qwen/qwen3.8-27b"
+      - "mixtral-8x7b-32768"
+    timeout: 15.0
+
+  gemini:
+    name: "Google Gemini"
+    base_url: "https://generativelanguage.googleapis.com/v1beta"
+    default_model: "gemini-2.0-flash"
+    allowed_free_models:
+      - "gemini-2.0-flash"
+      - "gemini-1.5-flash"
+      - "gemini-1.5-flash-8b"
+      - "gemini-2.0-flash-exp"
+    timeout: 20.0
+
+  ollama:
+    name: "Ollama (Offline)"
+    base_url: "http://localhost:11434"
+    default_model: "llama3"
+    allowed_free_models:
+      - "llama3"
+      - "mistral"
+      - "phi3"
+      - "qwen2.5"
+    timeout: 30.0
+
+  sarvam:
+    name: "Sarvam AI"
+    base_url: "https://api.sarvam.ai"
+    default_model: "sarvam-105b-conversations"
+    allowed_free_models:
+      - "sarvam-105b-conversations"
+      - "sarvam-105b"
+      - "sarvam-2b"
+      - "sarvam-m"
+    timeout: 20.0
+
+# Router & Failover Rules
+router_settings:
+  default_cooldown_seconds: 60       # Fallback cooldown if no Retry-After header
+  max_retries_per_key: 2             # Max retries for transient 5xx errors
+  backoff_multiplier: 1.5            # Exponential backoff base
+  max_context_tokens: 4096
+  reset_exhausted_hours: 24          # Daily quota reset duration
+
+# Audio & Voice Pipeline (Tier 1)
+audio:
+  tts:
+    voice: "en-GB-RyanNeural"        # Sophisticated British Butler voice
+    rate: "+0%"
+    pitch: "+0Hz"
+    volume: "+0%"
+  stt:
+    model: "base.en"                 # faster-whisper model (tiny.en, base.en, small.en)
+    device: "auto"                   # cpu or cuda
+    compute_type: "int8"             # int8, float16
+  recorder:
+    sample_rate: 16000
+    channels: 1
+    silence_threshold: 0.015
+    silence_duration: 1.2            # seconds of silence before auto-submitting

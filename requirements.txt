@@ -1,0 +1,25 @@
+# Core Runtime & Networking
+httpx>=0.27.0
+pydantic>=2.7.0
+python-dotenv>=1.0.1
+pyyaml>=6.0.1
+ddgs>=9.16.0
+
+# Backend Server & HUD WebSockets
+fastapi>=0.111.0
+uvicorn>=0.30.0
+websockets>=12.0
+
+# Testing & Mocks
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
+
+# Voice & Audio (Phase 2)
+edge-tts>=6.1.12
+# sounddevice>=0.4.7
+# faster-whisper>=1.0.2
+
+# OS Automation (Phase 3)
+psutil>=5.9.8
+# pyautogui>=0.9.54
+# screen-brightness-control>=0.23.0
