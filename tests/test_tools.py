@@ -57,3 +57,67 @@ async def test_search_duckduckgo():
     # Must not contain raw status code 202 error
     assert "status code 202" not in res.lower()
     assert "•" in res
+
+
+def test_launch_application(monkeypatch):
+    from jarvis.tools.os_control import launch_application
+    import webbrowser
+    import subprocess
+
+    opened_urls = []
+    opened_cmds = []
+
+    monkeypatch.setattr(webbrowser, "open", lambda url: opened_urls.append(url))
+    monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kwargs: opened_cmds.append(cmd))
+
+    # Known web streaming service
+    res_cr = launch_application("crunchyroll")
+    assert "Opening Crunchyroll" in res_cr
+    assert "https://www.crunchyroll.com" in opened_urls
+
+    # Known desktop app
+    res_chrome = launch_application("chrome")
+    assert "Opening Chrome" in res_chrome
+    assert any("chrome" in cmd for cmd in opened_cmds)
+
+    # Calculator
+    res_calc = launch_application("calculator")
+    assert "Opening Calculator" in res_calc
+    assert any("calc" in cmd for cmd in opened_cmds)
+
+    # Generic website fallback
+    res_duo = launch_application("duolingo")
+    assert "Opening Duolingo" in res_duo
+    assert any("duolingo.com" in u for u in opened_urls)
+
+
+@pytest.mark.asyncio
+async def test_agent_direct_launcher(monkeypatch):
+    from jarvis.brain.agent import JarvisAgent
+    import webbrowser
+    import subprocess
+
+    opened_urls = []
+    opened_cmds = []
+    monkeypatch.setattr(webbrowser, "open", lambda url: opened_urls.append(url))
+    monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kwargs: opened_cmds.append(cmd))
+
+    agent = JarvisAgent()
+
+    # Test "Open Crunchyroll"
+    rep1 = await agent._handle_direct_os_command("Open Crunchyroll")
+    assert rep1 == "Opening Crunchyroll for you now, sir."
+    assert "https://www.crunchyroll.com" in opened_urls
+
+    # Test "Open Chrome."
+    rep2 = await agent._handle_direct_os_command("Open Chrome.")
+    assert rep2 == "Opening Chrome for you now, sir."
+
+    # Test "Open calculator"
+    rep3 = await agent._handle_direct_os_command("Open calculator")
+    assert rep3 == "Opening Calculator for you now, sir."
+
+    # Test "Open YouTube"
+    rep4 = await agent._handle_direct_os_command("Open YouTube")
+    assert rep4 == "Opening Youtube for you now, sir."
+    assert "https://www.youtube.com" in opened_urls

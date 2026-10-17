@@ -75,34 +75,154 @@ def media_previous() -> str:
 
 def launch_application(app_name: str) -> str:
     """
-    Launches a Windows application by name or common alias.
-    Examples: 'chrome', 'notepad', 'calculator', 'explorer', 'code', 'cmd', 'powershell', 'spotify'.
+    Launches a Windows desktop application or web platform by name, URL, or common alias.
+    Supports desktop apps (Chrome, Notepad, Calc, VS Code, Steam, Spotify, Terminal, etc.)
+    and web streaming/productivity services (Crunchyroll, YouTube, Netflix, Discord, GitHub, etc.).
     """
+    import re
+    import shutil
+
     clean = app_name.strip().lower()
+
+    # Strip common leading verbs or noise prefixes
+    for prefix in ["the ", "open ", "launch ", "start ", "app ", "website ", "site "]:
+        if clean.startswith(prefix):
+            clean = clean[len(prefix):].strip()
+
+    # Direct URL or domain check
+    if clean.startswith(("http://", "https://")) or re.match(r"^[a-zA-Z0-9-]+\.(com|org|net|io|in|tv|co|ai|app|me|edu|gov)(/.*)?$", clean):
+        open_url(clean)
+        return f"Opening {app_name} for you now, sir."
+
+    # Known web apps, streaming platforms, and productivity services
+    known_web_services = {
+        "crunchyroll": "https://www.crunchyroll.com",
+        "youtube": "https://www.youtube.com",
+        "netflix": "https://www.netflix.com",
+        "prime video": "https://www.primevideo.com",
+        "primevideo": "https://www.primevideo.com",
+        "amazon prime": "https://www.primevideo.com",
+        "disney+": "https://www.hotstar.com",
+        "disney plus": "https://www.hotstar.com",
+        "hotstar": "https://www.hotstar.com",
+        "hulu": "https://www.hulu.com",
+        "twitch": "https://www.twitch.tv",
+        "anime": "https://www.crunchyroll.com",
+        "discord": "https://discord.com/app",
+        "whatsapp": "https://web.whatsapp.com",
+        "whatsapp web": "https://web.whatsapp.com",
+        "telegram": "https://web.telegram.org",
+        "telegram web": "https://web.telegram.org",
+        "github": "https://github.com",
+        "reddit": "https://www.reddit.com",
+        "twitter": "https://x.com",
+        "x": "https://x.com",
+        "instagram": "https://www.instagram.com",
+        "facebook": "https://www.facebook.com",
+        "linkedin": "https://www.linkedin.com",
+        "gmail": "https://mail.google.com",
+        "google mail": "https://mail.google.com",
+        "google drive": "https://drive.google.com",
+        "drive": "https://drive.google.com",
+        "google docs": "https://docs.google.com",
+        "google sheets": "https://sheets.google.com",
+        "google maps": "https://maps.google.com",
+        "maps": "https://maps.google.com",
+        "google": "https://www.google.com",
+        "chatgpt": "https://chatgpt.com",
+        "claude": "https://claude.ai",
+        "gemini": "https://gemini.google.com",
+        "stackoverflow": "https://stackoverflow.com",
+        "stack overflow": "https://stackoverflow.com",
+        "pinterest": "https://www.pinterest.com",
+        "wikipedia": "https://www.wikipedia.org",
+        "notion": "https://www.notion.so",
+        "figma": "https://www.figma.com",
+        "canva": "https://www.canva.com",
+        "spotify web": "https://open.spotify.com",
+    }
+
+    if clean in known_web_services:
+        url = known_web_services[clean]
+        open_url(url)
+        return f"Opening {clean.title()} for you now, sir."
+
+    # Known desktop applications
     known_apps = {
         "chrome": "start chrome",
         "google chrome": "start chrome",
+        "edge": "start msedge",
+        "msedge": "start msedge",
+        "microsoft edge": "start msedge",
+        "firefox": "start firefox",
+        "brave": "start brave",
         "notepad": "notepad.exe",
         "calculator": "calc.exe",
         "calc": "calc.exe",
+        "paint": "mspaint.exe",
+        "mspaint": "mspaint.exe",
         "explorer": "explorer.exe",
         "file explorer": "explorer.exe",
+        "files": "explorer.exe",
+        "my computer": "explorer.exe",
         "code": "code",
         "vs code": "code",
         "vscode": "code",
+        "visual studio code": "code",
         "terminal": "wt.exe",
+        "windows terminal": "wt.exe",
         "cmd": "start cmd",
+        "command prompt": "start cmd",
+        "powershell": "start powershell",
         "task manager": "taskmgr.exe",
         "taskmgr": "taskmgr.exe",
+        "settings": "start ms-settings:",
+        "windows settings": "start ms-settings:",
+        "control panel": "control.exe",
         "spotify": "start spotify:",
+        "steam": "start steam://",
+        "vlc": "start vlc",
+        "word": "start winword",
+        "ms word": "start winword",
+        "microsoft word": "start winword",
+        "excel": "start excel",
+        "ms excel": "start excel",
+        "microsoft excel": "start excel",
+        "powerpoint": "start powerpnt",
+        "ppt": "start powerpnt",
+        "ms powerpoint": "start powerpnt",
     }
 
-    cmd = known_apps.get(clean, f"start {clean}")
-    try:
-        subprocess.Popen(cmd, shell=True)
-        return f"Opening {app_name}, sir."
-    except Exception as e:
-        return f"Unable to open {app_name}: {str(e)}"
+    if clean in known_apps:
+        cmd = known_apps[clean]
+        try:
+            subprocess.Popen(cmd, shell=True)
+            return f"Opening {clean.title()} for you now, sir."
+        except Exception as e:
+            return f"Unable to open {clean}: {str(e)}"
+
+    # Check if executable exists in system PATH or is local file
+    if shutil.which(clean) or shutil.which(f"{clean}.exe"):
+        try:
+            subprocess.Popen(f"start {clean}", shell=True)
+            return f"Opening {clean.title()} for you now, sir."
+        except Exception as e:
+            return f"Unable to open {clean}: {str(e)}"
+
+    if os.path.exists(clean):
+        try:
+            if sys.platform == "win32":
+                os.startfile(clean)
+            else:
+                subprocess.Popen(["xdg-open", clean])
+            return f"Opening {clean} for you now, sir."
+        except Exception as e:
+            return f"Unable to open {clean}: {str(e)}"
+
+    # Default fallback for arbitrary user targets: open as web domain
+    fallback_url = f"https://www.{clean}.com"
+    open_url(fallback_url)
+    return f"Opening {clean.title()} for you now, sir."
 
 
 def open_url(url: str) -> str:

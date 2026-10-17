@@ -83,12 +83,24 @@ class JarvisAgent:
             await execute_tool("media_previous")
             return "Returning to the previous track, sir."
 
-        # Application launcher
-        app_match = re.search(r"\b(open|launch|start)\s+(chrome|notepad|calculator|calc|spotify|explorer|code|cmd|terminal)\b", lower)
+        # Application / Website launcher (fast-path < 20ms)
+        app_match = re.search(
+            r"^(?:please\s+|can\s+you\s+)?(?:open|launch|start)\s+(?:the\s+)?([a-zA-Z0-9_\-\.\:\/ ]+?)(?:\s+(?:for\s+me|please|app|application|website|site))?[\.\?!]?$",
+            lower
+        )
         if app_match:
-            app_name = app_match.group(2)
-            await execute_tool("launch_application", {"app_name": app_name})
-            return f"Opening {app_name.title()} for you now, sir."
+            raw_target = app_match.group(1).strip()
+            # Clean up target (e.g. "crunchyroll in chrome" -> "crunchyroll")
+            target = re.sub(r"\s+in\s+(?:chrome|browser|edge|firefox)$", "", raw_target).strip()
+            non_app_words = {
+                "up", "down", "left", "right", "here", "there", "now", "it", "this",
+                "that", "something", "anything", "discussion", "conversation", "thinking",
+                "talking", "chatting", "working", "questions", "question", "music", "song"
+            }
+            if target and target not in non_app_words:
+                await execute_tool("launch_application", {"app_name": target})
+                display_name = target.title() if not target.startswith("http") else target
+                return f"Opening {display_name} for you now, sir."
 
         # System health / hardware telemetry
         if any(w in lower for w in ["system status", "hardware status", "cpu usage", "ram usage", "battery status", "system stats", "workstation health"]):
@@ -193,7 +205,13 @@ class JarvisAgent:
             full_content.append(chunk)
             yield chunk
 
-        self.history.append({"role": "assistant", "content": "".join(full_content)})
+        final_text = "".join(full_content).strip()
+        if not final_text:
+            fallback = "At your service, sir. How may I assist you?"
+            self.history.append({"role": "assistant", "content": fallback})
+            yield fallback
+        else:
+            self.history.append({"role": "assistant", "content": final_text})
 
     def get_status(self) -> Dict[str, Any]:
         """Returns diagnostic telemetry for the agent and provider pools."""

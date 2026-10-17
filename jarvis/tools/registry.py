@@ -106,11 +106,11 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "launch_application",
-            "description": "Launch a Windows application such as chrome, notepad, calculator, code, explorer, spotify.",
+            "description": "Launch a Windows desktop application or web platform (e.g. 'crunchyroll', 'youtube', 'netflix', 'discord', 'chrome', 'calculator', 'notepad', 'code', 'spotify').",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "app_name": {"type": "string", "description": "Name of the application to open (e.g. 'chrome', 'notepad', 'calculator', 'spotify')"}
+                    "app_name": {"type": "string", "description": "Name or URL of the application/service to open (e.g. 'crunchyroll', 'youtube', 'chrome', 'calculator')"}
                 },
                 "required": ["app_name"],
             },
