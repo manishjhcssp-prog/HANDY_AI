@@ -295,6 +295,7 @@ def main():
     parser.add_argument("--voice", "-v", action="store_true", help="Enable spoken voice output")
     parser.add_argument("--hud", action="store_true", help="Launch the Futuristic Sci-Fi Holographic Web HUD")
     parser.add_argument("--wake-word", "--hands-free", action="store_true", help="Continuous hands-free wake word detection ('Hey JARVIS')")
+    parser.add_argument("--no-wake-word", action="store_true", help="Disable background wake-word in HUD mode")
     parser.add_argument("--port", type=int, default=8000, help="Web server port for the HUD (default: 8000)")
     args = parser.parse_args()
 
@@ -306,7 +307,7 @@ def main():
         import threading
         url = f"http://127.0.0.1:{args.port}"
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()
-        start_server(port=args.port, agent=agent)
+        start_server(port=args.port, agent=agent, enable_wake_word=not args.no_wake_word)
         return
 
     if args.wake_word:

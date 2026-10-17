@@ -1,7 +1,7 @@
 """
 JARVIS AI - Hands-Free Wake-Word Detection Engine (Tier 1 / Phase 5)
-Continuous low-power microphone listening with RMS VAD gating
-and openWakeWord neural inference for 'Hey JARVIS'.
+Continuous low-power microphone listening with openWakeWord neural inference
+for 'Hey JARVIS' with acoustic chime feedback and debounce protection.
 """
 
 import logging
@@ -32,53 +32,80 @@ def play_wake_chime():
 class WakeWordDetector:
     """
     Detects the 'Hey JARVIS' wake word using openWakeWord
-    with adaptive RMS energy pre-filtering for ~0% idle CPU usage.
+    running continuous 16kHz audio chunk inference with temporal feature buffers.
     """
 
-    def __init__(self, threshold: float = 0.45, model_name: str = "hey_jarvis_v0.1.tflite"):
+    def __init__(
+        self,
+        threshold: float = 0.35,
+        model_name: str = "hey_jarvis_v0.1.onnx",
+        debounce_seconds: float = 2.0,
+    ):
         self.threshold = threshold
         self.model_name = model_name
+        self.debounce_seconds = debounce_seconds
+        self.last_detection_time = 0.0
         self.model = None
         self._init_model()
 
     def _init_model(self):
         try:
             from openwakeword.model import Model
-            logger.info("Initializing openWakeWord neural model for 'Hey JARVIS'...")
-            self.model = Model(wakeword_models=[self.model_name])
-            logger.info("openWakeWord engine ready.")
+            logger.info(f"Initializing openWakeWord neural model '{self.model_name}'...")
+            try:
+                self.model = Model(wakeword_models=[self.model_name], inference_framework="onnx")
+            except Exception:
+                # Fallback to model name directly if onnx framework switch fails
+                self.model = Model(wakeword_models=[self.model_name])
+            
+            # Prime model buffer with 5 frames of silence
+            zero_chunk = np.zeros(1280, dtype=np.int16)
+            for _ in range(5):
+                self.model.predict(zero_chunk)
+
+            logger.info("openWakeWord engine ready and primed for 'Hey JARVIS'.")
         except Exception as e:
             logger.warning(f"openWakeWord initialization failed ({e}), using acoustic energy fallback.")
             self.model = None
 
     def process_chunk(self, chunk_16k: np.ndarray) -> bool:
         """
-        Processes a 16kHz audio chunk (float32 [-1, 1] or int16 [-32768, 32767]).
+        Processes a 16kHz audio chunk (1280 samples / 80ms).
         Returns True if the 'Hey JARVIS' wake word is detected.
         """
         if len(chunk_16k) == 0:
             return False
 
-        # 1. Convert to float32 for RMS calculation
+        # Convert to int16 1D array as expected by openWakeWord
         if chunk_16k.dtype == np.int16:
-            float_audio = chunk_16k.astype(np.float32) / 32768.0
-            int16_audio = chunk_16k
+            int16_audio = chunk_16k.flatten()
         else:
-            float_audio = chunk_16k.astype(np.float32)
-            int16_audio = (chunk_16k * 32767).clip(-32768, 32767).astype(np.int16)
+            int16_audio = (chunk_16k.flatten() * 32767).clip(-32768, 32767).astype(np.int16)
 
-        # 2. VAD Gate: if acoustic energy is negligible, skip neural inference
-        rms = float(np.sqrt(np.mean(float_audio ** 2)))
-        if rms < 0.003:
+        # Pad if chunk is shorter than 1280 samples
+        if len(int16_audio) < 1280:
+            int16_audio = np.pad(int16_audio, (0, 1280 - len(int16_audio)))
+        elif len(int16_audio) > 1280:
+            int16_audio = int16_audio[:1280]
+
+        now = time.time()
+        # Debounce check: prevent multiple triggers during same phrase
+        if now - self.last_detection_time < self.debounce_seconds:
+            if self.model is not None:
+                try:
+                    self.model.predict(int16_audio)
+                except Exception:
+                    pass
             return False
 
-        # 3. Neural inference with openWakeWord
+        # Neural inference with openWakeWord
         if self.model is not None:
             try:
                 predictions = self.model.predict(int16_audio)
                 for name, score in predictions.items():
                     if "jarvis" in name.lower() and score >= self.threshold:
-                        logger.info(f"Wake word detected! Score: {score:.3f}")
+                        self.last_detection_time = now
+                        logger.info(f"Wake word detected! Model: {name}, Score: {score:.3f}")
                         return True
             except Exception as e:
                 logger.debug(f"Wake prediction error: {e}")
@@ -95,7 +122,7 @@ class WakeWordListener:
     def __init__(
         self,
         on_wake: Optional[Callable[[], None]] = None,
-        threshold: float = 0.45,
+        threshold: float = 0.35,
         play_chime: bool = True,
     ):
         self.on_wake = on_wake
@@ -151,7 +178,7 @@ class WakeWordListener:
                         continue
 
                     chunk, overflowed = stream.read(chunk_samples)
-                    if overflowed:
+                    if overflowed or chunk is None:
                         continue
 
                     audio_flat = chunk.flatten()
@@ -163,7 +190,10 @@ class WakeWordListener:
                             self.pause()
                             try:
                                 self.on_wake()
+                            except Exception as ex:
+                                logger.error(f"Error in on_wake callback: {ex}")
                             finally:
                                 self.resume()
         except Exception as e:
             logger.debug(f"Wake word stream terminated: {e}")
+
