@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS // Autonomous Workstation HUD</title>
+    <meta name="description" content="JARVIS AI Autonomous Workstation Holographic Interface. Real-time telemetry, neural router state, audio reactive Arc Reactor core.">
+    <!-- Google Fonts for Futuristic Sci-Fi Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Orbitron:wght@400;600;700;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="sci-fi-theme">
+    <!-- Ambient Holographic Background & Scanlines -->
+    <div class="hologram-grid"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <div class="hud-container">
+        <!-- TOP HUD HEADER -->
+        <header class="hud-header">
+            <div class="header-left">
+                <div class="reactor-mini-icon">
+                    <div class="mini-ring"></div>
+                    <div class="mini-core"></div>
+                </div>
+                <div class="header-brand">
+                    <h1 class="brand-title">J.A.R.V.I.S.</h1>
+                    <span class="brand-sub">MARK VII // AUTONOMOUS WORKSTATION HUD</span>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <div class="status-pill" id="hud-connection-status">
+                    <span class="status-pulse-dot"></span>
+                    <span class="status-text" id="hud-status-text">INITIALIZING QUANTUM LINK</span>
+                </div>
+                <div class="latency-chip" id="hud-latency-chip">
+                    <span class="label">PING:</span>
+                    <span class="val" id="hud-latency-val">-- ms</span>
+                </div>
+                <div class="uptime-chip">
+                    <span class="label">UPTIME:</span>
+                    <span class="val" id="hud-uptime-val">00:00:00</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <button class="hud-btn" id="btn-toggle-voice" title="Toggle Spoken Vocal Responses">
+                    <span class="btn-icon">🔊</span>
+                    <span class="btn-label" id="voice-toggle-label">VOICE: ON</span>
+                </button>
+                <button class="hud-btn btn-danger" id="btn-reset-memory" title="Reset Conversational Memory Matrix">
+                    <span class="btn-icon">↺</span>
+                    <span class="btn-label">RESET MATRIX</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN 3-COLUMN HOLO-DOCK -->
+        <main class="hud-main">
+            <!-- LEFT COLUMN: SYSTEM DIAGNOSTICS & HARDWARE TELEMETRY -->
+            <section class="hud-panel telemetry-panel">
+                <div class="panel-header">
+                    <div class="panel-tag">// TELEMETRY</div>
+                    <h2 class="panel-title">WORKSTATION DIAGNOSTICS</h2>
+                    <div class="corner-bracket top-right"></div>
+                </div>
+
+                <div class="panel-content">
+                    <!-- Radial Gauges Row -->
+                    <div class="gauges-grid">
+                        <!-- CPU Gauge -->
+                        <div class="gauge-card">
+                            <div class="radial-gauge-container">
+                                <svg class="radial-gauge" viewBox="0 0 100 100">
+                                    <circle class="gauge-bg" cx="50" cy="50" r="42"></circle>
+                                    <circle class="gauge-bar" id="cpu-gauge-bar" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"></circle>
+                                </svg>
+                                <div class="gauge-inner">
+                                    <span class="gauge-value" id="cpu-percent-val">0%</span>
+                                    <span class="gauge-sub">LOAD</span>
+                                </div>
+                            </div>
+                            <div class="gauge-label">CPU CORE LOAD</div>
+                        </div>
+
+                        <!-- RAM Gauge -->
+                        <div class="gauge-card">
+                            <div class="radial-gauge-container">
+                                <svg class="radial-gauge" viewBox="0 0 100 100">
+                                    <circle class="gauge-bg" cx="50" cy="50" r="42"></circle>
+                                    <circle class="gauge-bar gauge-purple" id="ram-gauge-bar" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"></circle>
+                                </svg>
+                                <div class="gauge-inner">
+                                    <span class="gauge-value" id="ram-percent-val">0%</span>
+                                    <span class="gauge-sub" id="ram-gb-sub">0/0 GB</span>
+                                </div>
+                            </div>
+                            <div class="gauge-label">MEMORY USAGE</div>
+                        </div>
+                    </div>
+
+                    <!-- Linear Metrics Bars -->
+                    <div class="metric-linear-group">
+                        <div class="metric-row">
+                            <div class="metric-info">
+                                <span class="metric-name">PRIMARY DISK (C:)</span>
+                                <span class="metric-val" id="disk-metric-val">0% (0 GB free)</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill" id="disk-progress-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="metric-row">
+                            <div class="metric-info">
+                                <span class="metric-name">BATTERY / POWER</span>
+                                <span class="metric-val" id="battery-metric-val">Checking...</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill fill-battery" id="battery-progress-bar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Neural Router & Cost Telemetry -->
+                    <div class="telemetry-block">
+                        <div class="block-title">// NEURAL ROUTER MATRIX</div>
+                        <div class="telemetry-items">
+                            <div class="item-row">
+                                <span class="item-k">Active Provider:</span>
+                                <span class="item-v highlight-cyan" id="router-provider-val">Standby</span>
+                            </div>
+                            <div class="item-row">
+                                <span class="item-k">Active Model:</span>
+                                <span class="item-v highlight-gold" id="router-model-val">Local Router</span>
+                            </div>
+                            <div class="item-row">
+                                <span class="item-k">API Key Slot:</span>
+                                <span class="item-v font-mono" id="router-key-val">Local System</span>
+                            </div>
+                            <div class="item-row">
+                                <span class="item-k">Cost Protection:</span>
+                                <span class="item-v badge-free" id="router-cost-val">₹0 ONGOING GUARD (ACTIVE)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Key Pool Failover Health -->
+                    <div class="telemetry-block key-pool-block">
+                        <div class="block-title">// PROVIDER POOL CAPACITY</div>
+                        <div class="key-pool-list" id="key-pool-list">
+                            <div class="pool-item"><span class="name">Groq</span><span class="stat">Connected</span></div>
+                            <div class="pool-item"><span class="name">OpenRouter</span><span class="stat">Connected</span></div>
+                            <div class="pool-item"><span class="name">Gemini</span><span class="stat">Connected</span></div>
+                            <div class="pool-item"><span class="name">Ollama</span><span class="stat">Standby</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="corner-bracket bottom-left"></div>
+            </section>
+
+            <!-- CENTER COLUMN: ARC REACTOR CORE & AUDIO VISUALIZER -->
+            <section class="hud-panel core-panel">
+                <div class="panel-header text-center">
+                    <div class="panel-tag">// PLASMA CORE MATRIX</div>
+                    <h2 class="panel-title">ARC REACTOR // RESONATOR</h2>
+                </div>
+
+                <div class="reactor-viewport">
+                    <!-- The Interactive Canvas -->
+                    <canvas id="arc-reactor-canvas" width="600" height="600"></canvas>
+
+                    <!-- Core State Banner Overlay -->
+                    <div class="reactor-state-overlay">
+                        <div class="state-ring-hud">
+                            <span class="state-sub-title">CORE STATUS</span>
+                            <div class="state-headline" id="reactor-status-headline">SYSTEM STANDBY</div>
+                            <div class="state-directive" id="reactor-status-sub">Listening for user directives</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Voice Trigger Dock -->
+                <div class="voice-trigger-dock">
+                    <button class="voice-mic-hero" id="hero-mic-btn" title="Tap to listen or hold for voice input">
+                        <div class="mic-glow-ring"></div>
+                        <div class="mic-glow-ring ring-secondary"></div>
+                        <div class="mic-icon-svg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                            </svg>
+                        </div>
+                        <span class="mic-btn-text" id="hero-mic-text">VOICE DIRECTIVE</span>
+                    </button>
+                </div>
+
+                <!-- Quick Directive Action Pills -->
+                <div class="quick-pills-row">
+                    <button class="quick-pill" data-prompt="Open Crunchyroll">⚡ Crunchyroll</button>
+                    <button class="quick-pill" data-prompt="Open Chrome">🌐 Chrome</button>
+                    <button class="quick-pill" data-prompt="Open calculator">🧮 Calculator</button>
+                    <button class="quick-pill" data-prompt="Open YouTube">📺 YouTube</button>
+                    <button class="quick-pill" data-prompt="System Status">📊 System Status</button>
+                    <button class="quick-pill" data-prompt="Weather in London">🌦️ Weather</button>
+                </div>
+            </section>
+
+            <!-- RIGHT COLUMN: NEURAL DIALOGUE & TACTICAL TERMINAL -->
+            <section class="hud-panel terminal-panel">
+                <div class="panel-header">
+                    <div class="tab-selectors">
+                        <button class="tab-btn active" id="tab-dialogue">NEURAL DIALOGUE</button>
+                        <button class="tab-btn" id="tab-terminal">TACTICAL LOGS</button>
+                    </div>
+                    <div class="corner-bracket top-right"></div>
+                </div>
+
+                <div class="panel-content panel-chat-content">
+                    <!-- Dialogue Feed View -->
+                    <div class="chat-viewport active-view" id="view-dialogue">
+                        <div class="chat-messages" id="chat-messages">
+                            <!-- Initial Welcome Turn -->
+                            <div class="chat-turn assistant-turn">
+                                <div class="avatar-badge">J</div>
+                                <div class="turn-bubble">
+                                    <div class="turn-header">
+                                        <span class="turn-sender">JARVIS</span>
+                                        <span class="turn-time">LIVE</span>
+                                    </div>
+                                    <div class="turn-text">Good day, sir. All neural subsystems, workstation controllers, and the holographic HUD are at your service. How may I assist you today?</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tactical Logs View -->
+                    <div class="terminal-viewport" id="view-terminal">
+                        <div class="terminal-stream font-mono" id="terminal-stream">
+                            <div class="log-line log-info"><span class="log-ts">[00:00:00]</span> [INIT] JARVIS Mark VII Holographic Subsystem ready.</div>
+                            <div class="log-line log-info"><span class="log-ts">[00:00:00]</span> [AUDIO] Neural Kokoro TTS Engine verified at 24kHz.</div>
+                            <div class="log-line log-info"><span class="log-ts">[00:00:00]</span> [ROUTER] Free-tier key manager active. 0 INR budget enforced.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Chat Input Dock -->
+                <div class="chat-input-dock">
+                    <form id="chat-form" class="chat-form">
+                        <div class="input-wrapper">
+                            <span class="input-prompt-symbol">&gt;</span>
+                            <input 
+                                type="text" 
+                                id="chat-input" 
+                                class="chat-input font-mono" 
+                                placeholder="Enter directive (e.g. 'Open Crunchyroll', 'Increase volume', 'Check weather')..." 
+                                autocomplete="off"
+                                spellcheck="false"
+                            >
+                            <button type="submit" class="send-btn" id="btn-chat-send" title="Send Directive">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="corner-bracket bottom-right"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Application Script -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -211,9 +211,20 @@ def main():
     parser.add_argument("--query", "-q", type=str, help="Execute a single one-shot query and exit")
     parser.add_argument("--status", "-s", action="store_true", help="Print system telemetry and exit")
     parser.add_argument("--voice", "-v", action="store_true", help="Enable spoken voice output")
+    parser.add_argument("--hud", action="store_true", help="Launch the Futuristic Sci-Fi Holographic Web HUD")
+    parser.add_argument("--port", type=int, default=8000, help="Web server port for the HUD (default: 8000)")
     args = parser.parse_args()
 
     agent = JarvisAgent()
+
+    if args.hud:
+        from jarvis.server.app import start_server
+        import webbrowser
+        import threading
+        url = f"http://127.0.0.1:{args.port}"
+        threading.Timer(1.2, lambda: webbrowser.open(url)).start()
+        start_server(port=args.port, agent=agent)
+        return
 
     if args.status:
         print_system_info(agent, voice_enabled=args.voice)
