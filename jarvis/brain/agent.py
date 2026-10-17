@@ -172,6 +172,27 @@ class JarvisAgent:
         if any(w in lower for w in ["recall memories", "recall facts", "what do you remember about me", "what do you remember", "list memories", "show memories"]):
             return await execute_tool("recall_user_memory")
 
+        # Proactive Scheduled Reminders
+        remind_time_match = re.search(
+            r"^(?:please\s+)?remind\s+me\s+to\s+(.+?)\s+in\s+(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)$",
+            lower
+        )
+        if remind_time_match:
+            msg = remind_time_match.group(1).strip()
+            num = int(remind_time_match.group(2))
+            unit = remind_time_match.group(3).lower()
+            mult = 60 if "min" in unit else (3600 if "hour" in unit or "hr" in unit else 1)
+            delay = num * mult
+            return await execute_tool("set_reminder", {"message": msg, "delay_seconds": delay})
+
+        if any(w in lower for w in ["list reminders", "show reminders", "pending reminders", "what are my reminders"]):
+            return await execute_tool("list_reminders")
+
+        cancel_rem_match = re.search(r"^(?:please\s+)?cancel\s+reminder\s+(?:#)?(\d+)$", lower)
+        if cancel_rem_match:
+            rid = int(cancel_rem_match.group(1))
+            return await execute_tool("cancel_reminder", {"reminder_id": rid})
+
         return None
 
     async def chat(

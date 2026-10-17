@@ -151,7 +151,7 @@ d:\SERVAM_AI/
 | **Phase 2** | **OS Automation & Agent Tools** | Master volume, media controls, app launcher (`launch_application`), CPU/RAM/Disk/Battery metrics (`sys_info`), DuckDuckGo & Weather tools | 🟢 Completed |
 | **Phase 3** | **Sci-Fi Holographic HUD** | Arc Reactor core animation, Web Audio waveform visualizer, system telemetry gauges, FastAPI WebSocket sync (`jarvis.server`, `hud/`) | 🟢 Completed |
 | **Phase 4** | **Vision & Long-Term Memory** | Screen awareness (`mss` + vision LLM), SQLite episodic & preference store (`MemoryManager`), user preference tracking & context injection | 🟢 Completed |
-| **Phase 5** | **Wake-Word & Continuous Autonomy** | Background wake-word listening (`openWakeWord`), proactive reminders, Windows startup service | 🟡 Ready to Begin |
+| **Phase 5** | **Wake-Word & Continuous Autonomy** | Background wake-word listening (`openWakeWord` "Hey Jarvis" model + VAD RMS gate + acoustic chirp), proactive SQLite desktop reminders & Windows toast alerts | 🟢 Completed |
 
 ---
 

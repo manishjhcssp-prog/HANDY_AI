@@ -22,6 +22,7 @@ from .os_control import (
 from .sys_info import get_system_summary, get_top_processes
 from .web_tools import get_weather, search_duckduckgo
 from .vision_tools import analyze_screen, get_active_window_title
+from .reminders import set_reminder_tool, list_reminders_tool, cancel_reminder_tool
 from jarvis.memory.memory_manager import get_memory_manager
 
 logger = logging.getLogger("JARVIS.Tools.Registry")
@@ -83,6 +84,9 @@ TOOL_DISPATCH: Dict[str, Callable[..., Any]] = {
     "remember_user_fact": remember_user_fact,
     "recall_user_memory": recall_user_memory,
     "forget_user_fact": forget_user_fact,
+    "set_reminder": set_reminder_tool,
+    "list_reminders": list_reminders_tool,
+    "cancel_reminder": cancel_reminder_tool,
 }
 
 # Standard OpenAI-compatible tool specifications
@@ -291,6 +295,43 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
                     "key": {"type": "string", "description": "The key of the fact to remove"}
                 },
                 "required": ["key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_reminder",
+            "description": "Schedule a workstation reminder alert with Windows notification and spoken audio.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message": {"type": "string", "description": "The reminder message or alert topic"},
+                    "delay_seconds": {"type": "integer", "description": "Delay in seconds before triggering (default: 60)"}
+                },
+                "required": ["message"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_reminders",
+            "description": "List all active pending scheduled reminders.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_reminder",
+            "description": "Cancel a pending reminder by its numeric ID.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reminder_id": {"type": "integer", "description": "The numeric ID of the reminder to cancel"}
+                },
+                "required": ["reminder_id"],
             },
         },
     },

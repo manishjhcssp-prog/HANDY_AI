@@ -206,12 +206,95 @@ async def one_shot_query(agent: JarvisAgent, query: str, voice_enabled: bool = F
         print(f"\n[Router Alert: {e}]\n")
 
 
+async def autonomous_wake_word_loop(agent: JarvisAgent):
+    """
+    Continuous hands-free loop that runs in the background.
+    Detects 'Hey JARVIS' wake-word, chimes, records user speech,
+    executes directives, speaks response, and returns to standby.
+    """
+    from jarvis.audio.wake_word import WakeWordListener
+    from jarvis.audio.recorder import AudioRecorder
+    from jarvis.audio.stt import STTEngine
+    from jarvis.audio.tts import TTSEngine
+    from jarvis.tools.reminders import get_reminder_scheduler
+
+    recorder = AudioRecorder()
+    stt = STTEngine()
+    tts = TTSEngine()
+
+    # Start proactive reminder scheduler with TTS alert callback
+    scheduler = get_reminder_scheduler()
+    scheduler.register_alert_callback(lambda item: asyncio.create_task(
+        tts.speak_text(f"Sir, an alert from your scheduler: {item['message']}")
+    ))
+    scheduler.start()
+
+    wake_event = asyncio.Event()
+    loop = asyncio.get_running_loop()
+
+    def on_wake():
+        loop.call_soon_threadsafe(wake_event.set)
+
+    listener = WakeWordListener(on_wake=on_wake)
+    listener.start()
+
+    print("\n" + "=" * 68)
+    print("  ⚡ JARVIS AUTONOMOUS HANDS-FREE MODE (MARK VII) ACTIVE")
+    print("  🎙️  Passive Listener: 'Hey JARVIS' (openWakeWord Neural Model)")
+    print("  🔊  Vocal Feedback: Kokoro-82M (24kHz British Accent)")
+    print("  ⏰  Proactive Reminders & Desktop Toast Alerts: Enabled")
+    print("  Press Ctrl+C at any time to power down.")
+    print("=" * 68 + "\n")
+
+    greeting = "All autonomous subsystems online. Awaiting your wake command, sir."
+    print(f"JARVIS: {greeting}\n")
+    await tts.speak_text(greeting)
+
+    try:
+        while True:
+            print("[👂 Listening for 'Hey JARVIS' in background...]")
+            await wake_event.wait()
+            wake_event.clear()
+
+            print("\n[⚡ WAKE-WORD DETECTED: 'Hey JARVIS']")
+            print("[🎤 Microphone active - Speak now... (auto-stops on silence)]")
+
+            audio = await asyncio.to_thread(recorder.record_until_silence, 9.0)
+            if len(audio) == 0:
+                print("[No voice captured.]\n")
+                continue
+
+            print("[⚡ Transcribing speech with Whisper...]")
+            transcribed = await asyncio.to_thread(stt.transcribe, audio)
+            if not transcribed:
+                print("[Speech could not be parsed.]\n")
+                continue
+
+            print(f"User (Spoken) > {transcribed}\n")
+            print("JARVIS > ", end="", flush=True)
+
+            try:
+                await tts.stream_and_speak(
+                    agent.stream_chat(transcribed),
+                    on_token=lambda chunk: print(chunk, end="", flush=True),
+                )
+            except Exception as e:
+                print(f"[Neural error: {e}]")
+            print("\n")
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("\n\nJARVIS: Powering down autonomous listener. Have a pleasant day, sir.\n")
+    finally:
+        listener.stop()
+        scheduler.stop()
+
+
 def main():
     parser = argparse.ArgumentParser(description="JARVIS Autonomous AI Assistant")
     parser.add_argument("--query", "-q", type=str, help="Execute a single one-shot query and exit")
     parser.add_argument("--status", "-s", action="store_true", help="Print system telemetry and exit")
     parser.add_argument("--voice", "-v", action="store_true", help="Enable spoken voice output")
     parser.add_argument("--hud", action="store_true", help="Launch the Futuristic Sci-Fi Holographic Web HUD")
+    parser.add_argument("--wake-word", "--hands-free", action="store_true", help="Continuous hands-free wake word detection ('Hey JARVIS')")
     parser.add_argument("--port", type=int, default=8000, help="Web server port for the HUD (default: 8000)")
     args = parser.parse_args()
 
@@ -224,6 +307,10 @@ def main():
         url = f"http://127.0.0.1:{args.port}"
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()
         start_server(port=args.port, agent=agent)
+        return
+
+    if args.wake_word:
+        asyncio.run(autonomous_wake_word_loop(agent))
         return
 
     if args.status:

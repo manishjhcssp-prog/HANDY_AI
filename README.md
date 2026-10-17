@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-00f0ff.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0077ff.svg?style=flat-square)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-38%20passed-10b981.svg?style=flat-square)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-43%20passed-10b981.svg?style=flat-square)](tests/)
 [![Strict ₹0 Cost Guard](https://img.shields.io/badge/API%20Cost-₹0%20(Free%20Tier)-ffb700.svg?style=flat-square)](config/config.yaml)
 [![Holographic HUD](https://img.shields.io/badge/HUD-FastAPI%20%2B%20WebSockets-a855f7.svg?style=flat-square)](hud/)
 
@@ -14,7 +14,7 @@
 
 **JARVIS (Just A Rather Very Intelligent System)** is a voice-first, low-latency autonomous AI assistant engineered for Windows workstations. Built with a polite British butler demeanor, it operates under a **strict ₹0 ongoing API cost constraint** through an intelligent multi-provider cognitive router with multi-key pooling, automatic cooldown recovery, and seamless provider failover.
 
-JARVIS features a **60 FPS Sci-Fi Holographic Web HUD** with a canvas-rendered Arc Reactor core, real-time hardware telemetry gauges, low-latency streaming **Kokoro Neural TTS** (82M parameters), **Faster-Whisper STT**, and a sub-20ms OS automation engine for controlling volume, applications, and web platforms.
+JARVIS features a **60 FPS Sci-Fi Holographic Web HUD** with a canvas-rendered Arc Reactor core, real-time hardware telemetry gauges, low-latency streaming **Kokoro Neural TTS** (82M parameters), **Faster-Whisper STT**, background **"Hey JARVIS" wake-word detection**, persistent **episodic memory**, and a sub-20ms OS automation engine for controlling volume, applications, desktop reminders, and web platforms.
 
 ---
 
@@ -63,6 +63,16 @@ JARVIS features a **60 FPS Sci-Fi Holographic Web HUD** with a canvas-rendered A
   - Real-time monospace terminal log capturing system calls and router events.
   - One-click quick directive pills (`Crunchyroll`, `Chrome`, `Calculator`, `YouTube`, `System Status`, `Weather`).
 
+### 👁️ 5. Multimodal Vision & Long-Term Memory (Tier 5)
+* **Screen Understanding**: Instant screen capture with LLM vision to inspect active windows, debug code on screen, or analyze images.
+* **Episodic & Preference Memory**: Persistent SQLite store (`data/jarvis_memory.db`) capturing user habits, favorite tools, notes, and conversation summaries.
+
+### 🔔 6. "Hey JARVIS" Wake-Word & Proactive Reminders (Phase 5)
+* **Hands-Free Neural Wake-Word**: Background wake-word listening using local ONNX-accelerated `openWakeWord` ("Hey Jarvis" model).
+* **VAD Energy Pre-Filter Gate**: RMS energy thresholding guarantees ~0% CPU load while waiting in the background.
+* **Sci-Fi Acoustic Confirmation**: Dual-tone frequency-modulated audio chirp (880Hz -> 1320Hz) upon wake detection.
+* **Proactive Scheduled Reminders**: Persistent background reminders with native Windows 10/11 Toast Notifications and Kokoro spoken voice alerts ("Sir, an alert from your scheduler: ...").
+
 ---
 
 ## 📂 Project Structure
@@ -81,30 +91,37 @@ d:\SERVAM_AI/
 │   ├── styles.css             # Glassmorphic sci-fi styling
 │   └── app.js                 # WebSocket client & Arc Reactor canvas engine
 ├── jarvis/
-│   ├── audio/                 # Audio Subsystem (STT, TTS, Recorder)
+│   ├── audio/                 # Audio Subsystem (STT, TTS, Recorder, Wake-Word)
 │   │   ├── recorder.py        # Mic capture & RMS energy VAD
 │   │   ├── stt.py             # Whisper STT engine
-│   │   └── tts.py             # Kokoro Neural TTS & Windows SAPI engine
+│   │   ├── tts.py             # Kokoro Neural TTS & Windows SAPI engine
+│   │   └── wake_word.py       # openWakeWord neural listener & acoustic chime
 │   ├── brain/                 # Cognitive Brain & Orchestrator
 │   │   ├── agent.py           # JarvisAgent conversation loop & fast-path tools
 │   │   ├── prompts.py         # System persona & British butler matrix
 │   │   ├── router.py          # LLMRouter with multi-provider failover
 │   │   ├── key_manager.py     # Multi-key rotation pool & rate limiter
 │   │   └── adapters/          # Groq, OpenRouter, Gemini, Ollama, Sarvam
+│   ├── memory/                # Long-Term Episodic & Semantic Memory
+│   │   └── memory_manager.py  # SQLite preferences, facts, and interaction store
 │   ├── server/                # Backend API & WebSocket Bridge
 │   │   └── app.py             # FastAPI server & background telemetry daemon
 │   └── tools/                 # OS Automation Tools
 │       ├── os_control.py      # App launcher, streaming URLs & media keys
+│       ├── reminders.py       # SQLite proactive scheduler & Windows toast alerts
 │       ├── sys_info.py        # CPU, RAM, battery & hardware metrics
 │       ├── web_tools.py       # DuckDuckGo search & weather
+│       ├── vision_tools.py    # Desktop screen capture & vision inspection
 │       └── registry.py        # Centralized tool dispatch & schemas
 └── tests/                     # Comprehensive Unit & Mock Test Suite
     ├── test_adapters.py       # Provider adapters & cost guards
     ├── test_audio.py          # STT, TTS & Kokoro voice tests
     ├── test_key_manager.py    # Key rotation & cooldown recovery
+    ├── test_memory_and_vision.py # Memory persistence & screen vision tests
     ├── test_router_failover.py# Multi-provider failover scenarios
     ├── test_server.py         # FastAPI REST & WebSocket endpoints
-    └── test_tools.py          # OS control, Crunchyroll & sys info tests
+    ├── test_tools.py          # OS control, Crunchyroll & sys info tests
+    └── test_wake_word_and_reminders.py # Wake-word VAD gate & proactive reminders
 ```
 
 ---
@@ -149,7 +166,19 @@ GEMINI_API_KEY_1=AIzaSy...
 
 ## 🎮 How to Run JARVIS
 
-### 1. Sci-Fi Holographic Web HUD (Recommended)
+### 1. Hands-Free Wake-Word Mode ("Hey JARVIS")
+Run JARVIS in continuous autonomous background listening mode:
+```powershell
+python run_jarvis.py --wake-word
+# or
+python run_jarvis.py --hands-free
+```
+* Sits quietly in background consuming **~0% idle CPU** thanks to RMS energy VAD gating.
+* Say **"Hey JARVIS"** — an acoustic sci-fi chime confirms detection.
+* Speak your request — microphone auto-records, transcribes with Whisper, executes tools, and speaks the response with Kokoro Neural TTS.
+* Automatically resets to background listening.
+
+### 2. Sci-Fi Holographic Web HUD (Recommended)
 Launch the FastAPI server and open the 60 FPS interactive HUD in your default web browser:
 ```powershell
 python run_jarvis.py --hud
@@ -158,7 +187,7 @@ python run_jarvis.py --hud
 * **Interactive API Docs**: `http://127.0.0.1:8000/docs`
 * **WebSocket Stream**: `ws://127.0.0.1:8000/ws`
 
-### 2. Spoken Voice Interactive CLI Mode
+### 3. Spoken Voice Interactive CLI Mode
 Run JARVIS in voice mode with real-time microphone listening and Kokoro neural vocal output:
 ```powershell
 python run_jarvis.py --voice
@@ -167,14 +196,19 @@ python run_jarvis.py --voice
 * Type commands or talk naturally.
 * Type `voice off` to switch to text mode, or `voice on` to re-enable voice.
 
-### 3. Text Interactive Mode
+### 4. Text Interactive Mode
 ```powershell
 python run_jarvis.py
 ```
 
-### 4. One-Shot Query Execution
+### 5. Proactive Reminders & One-Shot Directives
 Execute a single directive directly from PowerShell without entering the interactive loop:
 ```powershell
+# Schedule desktop reminders & spoken alerts
+python run_jarvis.py --query "Remind me to drink water in 10 minutes"
+python run_jarvis.py --query "List reminders"
+python run_jarvis.py --query "Cancel reminder 1"
+
 # Open a web platform / app
 python run_jarvis.py --query "Open Crunchyroll"
 python run_jarvis.py --query "Open Chrome"
@@ -187,7 +221,7 @@ python run_jarvis.py --query "System status"
 python run_jarvis.py --query "Search web for latest AI news"
 ```
 
-### 5. Check System Telemetry & Key Pool Status
+### 6. Check System Telemetry & Key Pool Status
 ```powershell
 python run_jarvis.py --status
 ```
@@ -231,7 +265,7 @@ tests/test_tools.py::test_agent_direct_launcher PASSED
 | **Phase 2** | **OS Automation & Tools** | Volume / media controls, universal app & streaming web launcher (Crunchyroll, YouTube, Chrome, Calc, etc.), hardware telemetry, DuckDuckGo search | 🟢 Completed |
 | **Phase 3** | **Sci-Fi Holographic HUD** | FastAPI backend, WebSocket bidirectional sync, 60 FPS Arc Reactor Canvas, SVG radial gauges, tactical terminal | 🟢 Completed |
 | **Phase 4** | **Vision & Long-Term Memory** | Screen awareness (`mss` + vision LLM), SQLite episodic & preference store (`MemoryManager`), user preference tracking & context injection | 🟢 Completed |
-| **Phase 5** | **Wake-Word & Autonomy** | Background wake-word listening (`openWakeWord`), proactive desktop reminders, Windows background service | 🟡 Ready to Begin |
+| **Phase 5** | **Wake-Word & Continuous Autonomy** | Background wake-word listening (`openWakeWord` "Hey Jarvis"), VAD energy pre-filter gate, acoustic chime, proactive SQLite reminders & Windows toast notifications | 🟢 Completed |
 
 ---
 
