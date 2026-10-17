@@ -46,3 +46,9 @@ htmlcov/
 .idea/
 Thumbs.db
 [Dd]esktop.ini
+
+# Local SQLite databases & captures
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/screenshots/

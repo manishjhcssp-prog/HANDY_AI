@@ -120,6 +120,11 @@ class Settings:
 
         return keys_map
 
+    def get_api_key(self, provider: str) -> Optional[str]:
+        """Returns the first available API key for the given provider, if configured."""
+        keys = self.api_keys.get(provider.lower(), [])
+        return keys[0] if keys else None
+
     def get_masked_keys_summary(self) -> Dict[str, List[str]]:
         """Returns masked key representations for UI and safe diagnostic display."""
         summary: Dict[str, List[str]] = {}

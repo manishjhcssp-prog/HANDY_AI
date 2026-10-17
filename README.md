@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-00f0ff.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-0077ff.svg?style=flat-square)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-33%20passed-10b981.svg?style=flat-square)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-38%20passed-10b981.svg?style=flat-square)](tests/)
 [![Strict ₹0 Cost Guard](https://img.shields.io/badge/API%20Cost-₹0%20(Free%20Tier)-ffb700.svg?style=flat-square)](config/config.yaml)
 [![Holographic HUD](https://img.shields.io/badge/HUD-FastAPI%20%2B%20WebSockets-a855f7.svg?style=flat-square)](hud/)
 
@@ -217,7 +217,7 @@ tests/test_server.py::test_server_telemetry_endpoint PASSED
 tests/test_server.py::test_serve_hud_index PASSED
 tests/test_tools.py::test_launch_application PASSED
 tests/test_tools.py::test_agent_direct_launcher PASSED
-============================= 33 passed in 7.69s ==============================
+============================= 38 passed in 8.5s ===============================
 ```
 
 ---
@@ -230,8 +230,8 @@ tests/test_tools.py::test_agent_direct_launcher PASSED
 | **Phase 1B** | **Voice Pipeline** | Streaming Kokoro-82M Neural TTS (24kHz `bm_george`), Windows SAPI5 fallback, Faster-Whisper STT, RMS energy VAD | 🟢 Completed |
 | **Phase 2** | **OS Automation & Tools** | Volume / media controls, universal app & streaming web launcher (Crunchyroll, YouTube, Chrome, Calc, etc.), hardware telemetry, DuckDuckGo search | 🟢 Completed |
 | **Phase 3** | **Sci-Fi Holographic HUD** | FastAPI backend, WebSocket bidirectional sync, 60 FPS Arc Reactor Canvas, SVG radial gauges, tactical terminal | 🟢 Completed |
-| **Phase 4** | **Vision & Long-Term Memory** | Screen awareness (`mss` + vision LLM), vector memory store (`ChromaDB` / SQLite), user preference tracking | 🟡 Ready to Begin |
-| **Phase 5** | **Wake-Word & Autonomy** | Background wake-word listening (`openWakeWord`), proactive desktop reminders, Windows background service | ⚪ Queued |
+| **Phase 4** | **Vision & Long-Term Memory** | Screen awareness (`mss` + vision LLM), SQLite episodic & preference store (`MemoryManager`), user preference tracking & context injection | 🟢 Completed |
+| **Phase 5** | **Wake-Word & Autonomy** | Background wake-word listening (`openWakeWord`), proactive desktop reminders, Windows background service | 🟡 Ready to Begin |
 
 ---
 

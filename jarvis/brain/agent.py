@@ -34,9 +34,15 @@ class JarvisAgent:
         self.reset()
 
     def reset(self) -> None:
-        """Resets conversational history back to initial system prompt."""
+        """Resets conversational history back to initial system prompt with injected long-term memory."""
+        from jarvis.memory.memory_manager import get_memory_manager
+        memory_ctx = get_memory_manager().get_context_for_prompt()
+        full_system_prompt = get_system_prompt()
+        if memory_ctx:
+            full_system_prompt += f"\n{memory_ctx}\n"
+
         self.history = [
-            {"role": "system", "content": get_system_prompt()}
+            {"role": "system", "content": full_system_prompt}
         ]
 
     def get_history(self) -> List[Dict[str, str]]:
@@ -139,6 +145,32 @@ class JarvisAgent:
         if any(w in lower for w in ["lock pc", "lock computer", "lock screen", "lock workstation"]):
             await execute_tool("lock_workstation")
             return "Locking workstation now, sir."
+
+        # Vision & Screen inspection fast-path
+        if any(w in lower for w in ["what's on my screen", "what is on my screen", "inspect screen", "look at my screen", "analyze my screen", "read my screen", "take screenshot", "capture screen"]):
+            return await execute_tool("analyze_screen")
+
+        if any(w in lower for w in ["what window is this", "active window", "what am i looking at", "current window"]):
+            win = await execute_tool("get_active_window")
+            return f"Your active foreground window is '{win}', sir."
+
+        # Long-Term Memory: Remember command
+        rem_match = re.search(r"^(?:please\s+)?remember\s+(?:that\s+)?(.+)$", lower)
+        if rem_match:
+            fact_text = rem_match.group(1).strip()
+            if " is " in fact_text:
+                k, v = fact_text.split(" is ", 1)
+            elif " are " in fact_text:
+                k, v = fact_text.split(" are ", 1)
+            elif "=" in fact_text:
+                k, v = fact_text.split("=", 1)
+            else:
+                k, v = "user_preference", fact_text
+            return await execute_tool("remember_user_fact", {"key": k.strip(), "value": v.strip()})
+
+        # Long-Term Memory: Recall command
+        if any(w in lower for w in ["recall memories", "recall facts", "what do you remember about me", "what do you remember", "list memories", "show memories"]):
+            return await execute_tool("recall_user_memory")
 
         return None
 

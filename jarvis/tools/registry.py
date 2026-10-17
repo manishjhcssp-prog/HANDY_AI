@@ -21,8 +21,46 @@ from .os_control import (
 )
 from .sys_info import get_system_summary, get_top_processes
 from .web_tools import get_weather, search_duckduckgo
+from .vision_tools import analyze_screen, get_active_window_title
+from jarvis.memory.memory_manager import get_memory_manager
 
 logger = logging.getLogger("JARVIS.Tools.Registry")
+
+
+def remember_user_fact(key: str, value: str, category: str = "general") -> str:
+    """Stores a fact or preference in long-term memory."""
+    return get_memory_manager().remember_fact(key, value, category)
+
+
+def recall_user_memory(query: str = "") -> str:
+    """Recalls stored facts or searches notes."""
+    mm = get_memory_manager()
+    if not query:
+        facts = mm.get_all_facts()
+        if not facts:
+            return "No persistent facts or preferences are currently stored in memory, sir."
+        res = ["Here is what I have committed to long-term memory, sir:"]
+        for k, v in facts.items():
+            res.append(f"• {k.title()}: {v}")
+        return "\n".join(res)
+    matches = mm.search_memory(query)
+    if not matches:
+        return f"No memories found matching '{query}', sir."
+    res = [f"Memory search results for '{query}', sir:"]
+    for m in matches:
+        if m.get("type") == "fact":
+            res.append(f"• Fact: {m['key']} = {m['value']}")
+        else:
+            res.append(f"• Note: {m['title']} - {m['content']}")
+    return "\n".join(res)
+
+
+def forget_user_fact(key: str) -> str:
+    """Removes a fact from long-term memory."""
+    success = get_memory_manager().forget_fact(key)
+    if success:
+        return f"Fact '{key}' has been removed from long-term memory, sir."
+    return f"I could not locate '{key}' in long-term memory, sir."
 
 
 # Function mappings
@@ -40,6 +78,11 @@ TOOL_DISPATCH: Dict[str, Callable[..., Any]] = {
     "get_top_processes": get_top_processes,
     "get_weather": get_weather,
     "search_duckduckgo": search_duckduckgo,
+    "analyze_screen": analyze_screen,
+    "get_active_window": get_active_window_title,
+    "remember_user_fact": remember_user_fact,
+    "recall_user_memory": recall_user_memory,
+    "forget_user_fact": forget_user_fact,
 }
 
 # Standard OpenAI-compatible tool specifications
@@ -184,6 +227,70 @@ TOOLS_SCHEMA: List[Dict[str, Any]] = [
                     "query": {"type": "string", "description": "Search query"}
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_screen",
+            "description": "Capture the user's workstation screen and inspect, summarize, or debug visible windows, code, or errors.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Specific question or request about the screen content (default: 'Analyze what is on my screen')"}
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_active_window",
+            "description": "Get the title and application name of the currently active/focused foreground window.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "remember_user_fact",
+            "description": "Store a permanent fact, user preference, project detail, or personal instruction into long-term memory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Unique key or topic (e.g. 'user_name', 'favorite_ide', 'project_name')"},
+                    "value": {"type": "string", "description": "The exact fact or preference to remember"},
+                    "category": {"type": "string", "description": "Category (e.g. 'preference', 'project', 'personal', 'general')"}
+                },
+                "required": ["key", "value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "recall_user_memory",
+            "description": "Recall remembered user facts, preferences, project details, and persistent notes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Optional keyword to search memory, or leave empty to list all remembered facts"}
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "forget_user_fact",
+            "description": "Remove a fact or preference from long-term memory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "The key of the fact to remove"}
+                },
+                "required": ["key"],
             },
         },
     },

@@ -21,7 +21,11 @@ soundfile>=0.12.1
 edge-tts>=6.1.12
 # faster-whisper>=1.0.2
 
-# OS Automation (Phase 3)
+# OS Automation (Phase 2 & 3)
 psutil>=5.9.8
 # pyautogui>=0.9.54
 # screen-brightness-control>=0.23.0
+
+# Vision & Screen Understanding (Phase 4)
+mss>=10.2.0
+Pillow>=10.0.0
