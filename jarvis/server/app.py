@@ -129,8 +129,8 @@ def create_app(agent: Optional[JarvisAgent] = None) -> FastAPI:
 
     async def telemetry_worker():
         """Periodically pushes real-time system metrics to all HUD clients."""
-        while True:
-            try:
+        try:
+            while True:
                 await asyncio.sleep(1.5)
                 if not app.state.manager.active_connections:
                     continue
@@ -158,10 +158,10 @@ def create_app(agent: Optional[JarvisAgent] = None) -> FastAPI:
                     },
                 }
                 await app.state.manager.broadcast(telemetry_packet)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.debug(f"Telemetry broadcast notice: {e}")
+        except (asyncio.CancelledError, GeneratorExit):
+            pass
+        except Exception as e:
+            logger.debug(f"Telemetry broadcast notice: {e}")
 
     # --- REST Endpoints ---
 
@@ -440,7 +440,10 @@ def start_server(host: str = "127.0.0.1", port: int = 8000, agent: Optional[Jarv
     print(f"  🌐 URL: http://{host}:{port}")
     print(f"  📡 WebSocket: ws://{host}:{port}/ws")
     print(f"==================================================================\n")
-    uvicorn.run(custom_app, host=host, port=port, log_level="warning")
+    try:
+        uvicorn.run(custom_app, host=host, port=port, log_level="warning")
+    except (KeyboardInterrupt, SystemExit):
+        print("\nJARVIS HUD Server shut down cleanly, sir.\n")
 
 
 if __name__ == "__main__":
