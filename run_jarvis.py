@@ -78,20 +78,23 @@ async def interactive_loop(agent: JarvisAgent, voice_enabled: bool = False):
     # Initial spoken introduction
     print("\nJARVIS: Initializing neural subsystems, sir...\n")
     try:
-        greeting_text = ""
         print("JARVIS > ", end="", flush=True)
-        async for chunk in agent.stream_chat("Please greet the user warmly and confirm you are online and ready to assist."):
-            print(chunk, end="", flush=True)
-            greeting_text += chunk
+        if voice_active and tts:
+            await tts.stream_and_speak(
+                agent.stream_chat("Please greet the user warmly and confirm you are online and ready to assist."),
+                on_token=lambda chunk: print(chunk, end="", flush=True),
+            )
+        else:
+            async for chunk in agent.stream_chat("Please greet the user warmly and confirm you are online and ready to assist."):
+                print(chunk, end="", flush=True)
         print("\n")
-        if voice_active:
-            await tts.speak_text(greeting_text)
     except Exception as e:
         print(f"\n[Error contacting neural router: {e}]\n")
 
     while True:
         try:
-            user_input = input("User > ").strip()
+            raw_input = await asyncio.to_thread(input, "User > ")
+            user_input = raw_input.strip()
         except (KeyboardInterrupt, EOFError):
             farewell = "Powering down neural links. Have a pleasant day, sir."
             print(f"\n\nJARVIS: {farewell}")

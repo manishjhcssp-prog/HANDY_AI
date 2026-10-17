@@ -24,6 +24,7 @@ def _speak_sapi_thread(text: str, rate: int = 1):
             voice = win32com.client.Dispatch("SAPI.SpVoice")
             voice.Rate = rate
             voice.Speak(text, 0)
+            voice = None
         finally:
             pythoncom.CoUninitialize()
     except Exception as e:
