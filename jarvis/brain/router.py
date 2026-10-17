@@ -63,7 +63,7 @@ class LLMRouter:
             ),
             "groq": GroqAdapter(
                 base_url=self.settings.providers_config.get("groq", {}).get("base_url", "https://api.groq.com/openai/v1"),
-                default_model=self.settings.providers_config.get("groq", {}).get("default_model", "llama-3.3-70b-versatile"),
+                default_model=self.settings.providers_config.get("groq", {}).get("default_model", "openai/gpt-oss-120b"),
                 allowed_free_models=self.settings.providers_config.get("groq", {}).get("allowed_free_models"),
             ),
             "gemini": GeminiAdapter(

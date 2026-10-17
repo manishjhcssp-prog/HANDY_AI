@@ -63,6 +63,9 @@ class LLMResponse:
     raw: Optional[Any] = None
 
 
+import httpx
+
+
 class BaseProviderAdapter(ABC):
     """Abstract base class for all LLM provider adapters."""
 
@@ -71,6 +74,18 @@ class BaseProviderAdapter(ABC):
         self.base_url = base_url
         self.default_model = default_model
         self.allowed_free_models = allowed_free_models
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self, timeout: float = 20.0) -> httpx.AsyncClient:
+        """Returns or creates a shared httpx.AsyncClient with keep-alive connection pooling."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=timeout)
+        return self._client
+
+    async def aclose(self):
+        """Closes the underlying HTTP client session."""
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
 
     def is_free_eligible(self, model: Optional[str]) -> bool:
         """Verifies if the specified model is in the approved free-tier list."""

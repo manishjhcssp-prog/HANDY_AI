@@ -14,6 +14,22 @@ from typing import Optional, AsyncIterator
 logger = logging.getLogger("JARVIS.Audio.TTS")
 
 
+def _speak_sapi_thread(text: str, rate: int = 1):
+    """Speaks text in a dedicated COM thread to prevent blocking asyncio loop."""
+    try:
+        import pythoncom
+        import win32com.client
+        pythoncom.CoInitialize()
+        try:
+            voice = win32com.client.Dispatch("SAPI.SpVoice")
+            voice.Rate = rate
+            voice.Speak(text, 0)
+        finally:
+            pythoncom.CoUninitialize()
+    except Exception as e:
+        logger.error(f"SAPI thread error: {e}")
+
+
 class TTSEngine:
     """
     Neural and native TTS engine with sentence streaming and graceful fallbacks.
@@ -50,7 +66,6 @@ class TTSEngine:
         """Speaks text using Windows SAPI voice."""
         if not self._sapi_voice:
             return
-        # Flag 1 = SVSFlagsAsync (non-blocking)
         flags = 1 if async_mode else 0
         try:
             self._sapi_voice.Speak(text, flags)
@@ -60,14 +75,14 @@ class TTSEngine:
     async def speak_text(self, text: str):
         """
         Synthesizes and speaks text using Edge-TTS if possible,
-        falling back seamlessly to Windows SAPI5.
+        falling back seamlessly to non-blocking Windows SAPI5.
         """
         clean_text = self._sanitize_text(text)
         if not clean_text:
             return
 
         if self.prefer_native or not self._is_online_tts_available():
-            self._speak_sapi(clean_text, async_mode=False)
+            await asyncio.to_thread(_speak_sapi_thread, clean_text, 1)
             return
 
         # Attempt Edge-TTS
@@ -103,37 +118,78 @@ class TTSEngine:
 
         except Exception as e:
             logger.info(f"Online TTS unavailable ({e}), using Windows SAPI voice.")
-            self._speak_sapi(clean_text, async_mode=False)
+            await asyncio.to_thread(_speak_sapi_thread, clean_text, 1)
 
     def speak_sync(self, text: str):
         """Synchronous speak wrapper for console/worker threads."""
         clean_text = self._sanitize_text(text)
         if not clean_text:
             return
-        self._speak_sapi(clean_text, async_mode=False)
+        _speak_sapi_thread(clean_text, 1)
 
-    async def stream_sentences(self, token_stream: AsyncIterator[str]):
+    async def stream_and_speak(
+        self,
+        token_stream: AsyncIterator[str],
+        on_token: Optional[any] = None,
+    ) -> str:
         """
-        Buffers streamed LLM tokens into complete sentences and speaks each
-        sentence as soon as it completes to minimize time-to-first-audio.
+        Streams tokens chunk-by-chunk with zero text latency, while simultaneously
+        queueing complete sentences for immediate, non-blocking speech synthesis.
         """
+        from typing import Callable
+        queue: asyncio.Queue[Optional[str]] = asyncio.Queue()
+        full_text = []
+
+        async def speech_worker():
+            while True:
+                sentence = await queue.get()
+                if sentence is None:
+                    queue.task_done()
+                    break
+                try:
+                    await self.speak_text(sentence)
+                except Exception as err:
+                    logger.warning(f"Error speaking sentence: {err}")
+                finally:
+                    queue.task_done()
+
+        worker_task = asyncio.create_task(speech_worker())
         buffer = ""
         sentence_end = re.compile(r"([.!?\n]+)\s*")
+        clause_end = re.compile(r"([,;:]+)\s*")
 
-        async for token in token_stream:
-            buffer += token
-            # Check if a sentence boundary is reached
-            match = sentence_end.search(buffer)
-            if match:
-                idx = match.end()
-                sentence = buffer[:idx].strip()
-                buffer = buffer[idx:]
-                if sentence:
-                    await self.speak_text(sentence)
+        try:
+            async for token in token_stream:
+                full_text.append(token)
+                if on_token:
+                    on_token(token)
 
-        # Speak remaining buffer
-        if buffer.strip():
-            await self.speak_text(buffer.strip())
+                buffer += token
+                match = sentence_end.search(buffer)
+                if match:
+                    sentence = buffer[:match.end()].strip()
+                    buffer = buffer[match.end():]
+                    if sentence:
+                        await queue.put(sentence)
+                elif len(buffer) > 90:
+                    cm = clause_end.search(buffer)
+                    if cm:
+                        sentence = buffer[:cm.end()].strip()
+                        buffer = buffer[cm.end():]
+                        if sentence:
+                            await queue.put(sentence)
+
+            if buffer.strip():
+                await queue.put(buffer.strip())
+        finally:
+            await queue.put(None)
+            await worker_task
+
+        return "".join(full_text)
+
+    async def stream_sentences(self, token_stream: AsyncIterator[str]):
+        """Buffers streamed LLM tokens into complete sentences and speaks concurrently."""
+        await self.stream_and_speak(token_stream, on_token=None)
 
     def _sanitize_text(self, text: str) -> str:
         """Removes markdown artifacts and unpronounceable characters."""

@@ -37,3 +37,16 @@ def test_recorder_initialization():
     orig = np.zeros(44100, dtype=np.float32)
     resampled = rec._resample_to_16k(orig, 44100)
     assert len(resampled) == 16000
+
+
+@pytest.mark.asyncio
+async def test_tts_stream_and_speak():
+    tts = TTSEngine(prefer_native=True)
+    async def mock_stream():
+        for chunk in ["Greetings, ", "sir. ", "System online."]:
+            yield chunk
+
+    tokens_received = []
+    full = await tts.stream_and_speak(mock_stream(), on_token=lambda t: tokens_received.append(t))
+    assert full == "Greetings, sir. System online."
+    assert tokens_received == ["Greetings, ", "sir. ", "System online."]

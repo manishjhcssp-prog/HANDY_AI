@@ -99,14 +99,14 @@ class OpenRouterAdapter(BaseProviderAdapter):
 
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         headers = self._get_headers(api_key)
+        client = self._get_client(self.timeout)
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
-                response = await client.post(url, json=payload, headers=headers)
-            except httpx.TimeoutException as e:
-                raise ServerError(f"OpenRouter request timed out: {str(e)}", provider=self.name)
-            except httpx.NetworkError as e:
-                raise ServerError(f"OpenRouter network connection error: {str(e)}", provider=self.name)
+        try:
+            response = await client.post(url, json=payload, headers=headers)
+        except httpx.TimeoutException as e:
+            raise ServerError(f"OpenRouter request timed out: {str(e)}", provider=self.name)
+        except httpx.NetworkError as e:
+            raise ServerError(f"OpenRouter network connection error: {str(e)}", provider=self.name)
 
         try:
             body = response.json()
@@ -155,27 +155,27 @@ class OpenRouterAdapter(BaseProviderAdapter):
         }
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         headers = self._get_headers(api_key)
+        client = self._get_client(self.timeout)
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            async with client.stream("POST", url, json=payload, headers=headers) as response:
-                if response.status_code != 200:
-                    body_text = await response.aread()
+        async with client.stream("POST", url, json=payload, headers=headers) as response:
+            if response.status_code != 200:
+                body_text = await response.aread()
+                try:
+                    body_json = json.loads(body_text)
+                except Exception:
+                    body_json = {"error": {"message": body_text.decode("utf-8", "ignore")}}
+                raise self._parse_error_response(response, body_json)
+
+            async for line in response.aiter_lines():
+                if line.startswith("data: "):
+                    data_str = line[6:].strip()
+                    if data_str == "[DONE]":
+                        break
                     try:
-                        body_json = json.loads(body_text)
+                        chunk = json.loads(data_str)
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        token = delta.get("content")
+                        if token:
+                            yield token
                     except Exception:
-                        body_json = {"error": {"message": body_text.decode("utf-8", "ignore")}}
-                    raise self._parse_error_response(response, body_json)
-
-                async for line in response.aiter_lines():
-                    if line.startswith("data: "):
-                        data_str = line[6:].strip()
-                        if data_str == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(data_str)
-                            delta = chunk.get("choices", [{}])[0].get("delta", {})
-                            token = delta.get("content")
-                            if token:
-                                yield token
-                        except Exception:
-                            continue
+                        continue

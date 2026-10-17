@@ -170,14 +170,16 @@ async def interactive_loop(agent: JarvisAgent, voice_enabled: bool = False):
 
         # Normal query processing
         print("JARVIS > ", end="", flush=True)
-        response_text = ""
         try:
-            async for chunk in agent.stream_chat(user_input):
-                print(chunk, end="", flush=True)
-                response_text += chunk
+            if voice_active and tts:
+                await tts.stream_and_speak(
+                    agent.stream_chat(user_input),
+                    on_token=lambda chunk: print(chunk, end="", flush=True),
+                )
+            else:
+                async for chunk in agent.stream_chat(user_input):
+                    print(chunk, end="", flush=True)
             print("\n")
-            if voice_active and response_text:
-                await tts.speak_text(response_text)
         except Exception as e:
             print(f"\n[Router Alert: {e}]\n")
 
@@ -187,13 +189,18 @@ async def one_shot_query(agent: JarvisAgent, query: str, voice_enabled: bool = F
     tts = TTSEngine() if voice_enabled else None
     print(f"User: {query}\n")
     print("JARVIS: ", end="", flush=True)
-    full_text = ""
-    async for chunk in agent.stream_chat(query):
-        print(chunk, end="", flush=True)
-        full_text += chunk
-    print("\n")
-    if tts and full_text:
-        await tts.speak_text(full_text)
+    try:
+        if voice_enabled and tts:
+            await tts.stream_and_speak(
+                agent.stream_chat(query),
+                on_token=lambda chunk: print(chunk, end="", flush=True),
+            )
+        else:
+            async for chunk in agent.stream_chat(query):
+                print(chunk, end="", flush=True)
+        print("\n")
+    except Exception as e:
+        print(f"\n[Router Alert: {e}]\n")
 
 
 def main():

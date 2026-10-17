@@ -23,7 +23,7 @@ def test_openrouter_free_model_eligibility():
 
 def test_groq_free_model_eligibility():
     adapter = GroqAdapter()
-    assert adapter.default_model == "llama-3.3-70b-versatile"
+    assert adapter.default_model == "openai/gpt-oss-120b"
     assert adapter.is_free_eligible("llama-3.3-70b-versatile") is True
     assert adapter.is_free_eligible("llama-3.1-8b-instant") is True
     assert adapter.is_free_eligible("openai/gpt-oss-120b") is True
